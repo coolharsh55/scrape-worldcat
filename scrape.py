@@ -8,13 +8,14 @@ logger.setLevel(logging.DEBUG)
 ch = logging.StreamHandler(sys.stdout)
 ch.setLevel(logging.DEBUG)
 formatter = logging.Formatter(
-    '%(asctime)s - %(levelname)s %(lineno)s - %(message)s')
+    '%(filename)s:%(lineno)s - %(funcName)s %(asctime)s - %(levelname)s %(lineno)s - %(message)s')
 ch.setFormatter(formatter)
 logger.addHandler(ch)
 
 
 _BASE_URL = 'https://www.worldcat.org'
 
+_AUTHORS = set()
 
 async def fetch(url, params):
     async with ClientSession() as session:
@@ -38,10 +39,41 @@ async def search(title, author=None):
                 url = link.get('href', None)
                 if not url:
                     continue
-                if 'editions?editions' in url:
-                    logger.debug(f'found editions for {title} - {author}')
-                    return url
+                # if 'editions?editions' in url:
+                #     logger.debug(f'found editions for {title} - {author}')
+                #     return url
+                return url
     logger.debug(f'notfound editions for {title} - {author}')
+
+
+async def get_authors(bookurl):
+    page = await fetch(_BASE_URL + bookurl, params=None)
+    soup = BeautifulSoup(page, 'html.parser')
+    select = soup.find("select", {"id": "authorSearchSelect"})
+    options = select.find_all("option")
+    authorlinks = [option['value'] for option in options]
+    logger.debug(f"found {len(authorlinks)} authors")
+    # for author in authorlinks:
+    #     logger.debug(f"found author link page {author}")
+    return authorlinks
+
+
+async def extract_author_subjects(authorlink):
+    page = await fetch(_BASE_URL + authorlink, params=None)
+    soup = BeautifulSoup(page, 'html.parser')
+    name = soup.find("h1").get_text()
+    
+    tagcloud = soup.find("div", {"id": "identitiesFASTCloud"})
+    tags = tagcloud.find_all("a")
+    subjects = []
+    for tag in tags:
+        text = tag.get_text()
+        if not text:
+            continue
+        subjects.append(text)
+
+    logger.debug(f"author {name} has subjects {subjects}")
+    return name, subjects
 
 
 async def get_editions(url):
@@ -70,6 +102,7 @@ async def extract_subjects(url):
 
 
 async def task(title, author):
+    # this part ensures that we have a link to the book page on worldcat
     logger.debug(f'waiting to fetch search page for {title} - {author}')
     bookurl = await search(title, author)
     logger.debug(f'fetched search page for {title} - {author}')
@@ -83,13 +116,13 @@ async def task(title, author):
             logger.warning(f'FAILED without author- {title} - {author}')
             return []
         logger.debug(f'found search page without author- {title} - {author}')
-    logger.debug(f'getting editions for {title} - {author}')
-    editions = await get_editions(bookurl)
-    logger.debug(f'got editions for {title} - {author}')
-    for edition in editions:
-        logger.debug(f'extracting subjects for {title} - {author} - {edition}')
-        subjects = await extract_subjects(edition)
-        logger.debug(f'got {len(subjects)}subjects for {title} - {edition}')
-        if subjects:
-            logger.info(f'SUCCESS: {title} - {author}')
-            return subjects
+    
+    # here we will get the link to the authors information from the books page
+    logger.debug(f'getting authors for {bookurl}')
+    authorlinks = await get_authors(bookurl)
+
+    # get associated subjects from each author page
+    for authorlink in authorlinks:
+        authordata = await extract_author_subjects(authorlink)
+
+    return authordata

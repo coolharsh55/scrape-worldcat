@@ -40,6 +40,7 @@ class Book(object):
         else:
             self._author = author
         self._author = re.sub('\s*\(.+\)', '', self._author)
+        self._author = self._author.split(',')[0]
         if self._author == "Anon.":
             self._author = None
 
@@ -62,3 +63,6 @@ class Book(object):
             self._title = title
         self._title = re.sub('\s*[\[\{\(]{1}.+[\]\}\)]?', '', self._title)
         return
+
+    def __str__(self):
+        return f'{self.title} -- {self.author}'

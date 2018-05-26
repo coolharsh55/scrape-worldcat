@@ -24,4 +24,6 @@ def load_books(limit=None):
 
 
 if __name__ == '__main__':
-    books = load_books(5)
+    books = load_books()
+    for b in books:
+        print(b)

@@ -39,8 +39,8 @@ class Book(object):
                             .search(author).groups()[0].strip()
         else:
             self._author = author
-        self._author = re.sub('\s*\(.+\)', '', self._author)
-        self._author = self._author.split(',')[0]
+        # self._author = re.sub('\s*\(.+\)', '', self._author)
+        # self._author = self._author.split(',')[0]
         if self._author == "Anon.":
             self._author = None
 

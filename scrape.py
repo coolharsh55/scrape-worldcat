@@ -1,6 +1,7 @@
 from aiohttp import ClientSession
 from bs4 import BeautifulSoup
 import logging
+import re
 import sys
 
 logger = logging.getLogger()
@@ -8,7 +9,7 @@ logger.setLevel(logging.DEBUG)
 ch = logging.StreamHandler(sys.stdout)
 ch.setLevel(logging.DEBUG)
 formatter = logging.Formatter(
-    '%(filename)s:%(lineno)s - %(funcName)s %(asctime)s - %(levelname)s %(lineno)s - %(message)s')
+        '%(levelname)s:%(filename)s:%(funcName)s:%(lineno)s %(message)s')
 ch.setFormatter(formatter)
 logger.addHandler(ch)
 
@@ -16,6 +17,7 @@ logger.addHandler(ch)
 _BASE_URL = 'https://www.worldcat.org'
 
 _AUTHORS = set()
+
 
 async def fetch(url, params):
     async with ClientSession() as session:
@@ -34,7 +36,8 @@ async def search(title, author=None):
     soup = BeautifulSoup(page, 'html.parser')
     for div in soup.find_all("div", class_="name"):
         text = div.find_next("a").get_text()
-        if text.lower() == title.lower():
+        # if text.lower() == title.lower():
+        if text.lower() in title.lower() or title.lower() in text.lower():
             for link in div.parent.find_all("a"):
                 url = link.get('href', None)
                 if not url:
@@ -110,13 +113,23 @@ async def task(title, author):
         if not author:
             logger.warning(f'FAILED - {title} - {author}')
             return []
-        logger.debug(f'trying without author: {title} - {author}')
-        bookurl = await search(title, None)
+        author = re.sub('\s*\(.+\)', '', author)
+        author = author.split(',')[0]
+        logger.debug(f'trying with author last name: {title} - {author}')
+        bookurl = await search(title, author)
         if not bookurl:
-            logger.warning(f'FAILED without author- {title} - {author}')
-            return []
-        logger.debug(f'found search page without author- {title} - {author}')
-    
+            logger.warning(f'FAILED with author lastname - {title} - {author}')
+            logger.debug(f'trying without author: {title} - {author}')
+            bookurl = await search(title, None)
+            if not bookurl:
+                logger.warning(f'FAILED without author- {title} - {author}')
+                return []
+            logger.debug(
+                f'found search page without author- {title} - {author}')
+        else:
+            logger.debug(
+                f'found search page with author lastname- {title} - {author}')
+
     # here we will get the link to the authors information from the books page
     logger.debug(f'getting authors for {bookurl}')
     authorlinks = await get_authors(bookurl)

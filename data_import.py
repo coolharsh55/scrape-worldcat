@@ -10,7 +10,7 @@ def _load():
         for index, row in enumerate(reader):
             # row = next(reader)
             book = Book()
-            book.id, book.author, book.title = index, row[2], row[3]
+            book.id, book.author, book.title = index, row[0], row[1]
             if not book.title:
                 continue
             yield book

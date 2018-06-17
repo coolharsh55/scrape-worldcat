@@ -50,6 +50,7 @@ if __name__ == '__main__':
         return zip_longest(*args, fillvalue=fillvalue)
 
     books = load_books()
+    # books = books[-100:]
     # with open('./output.csv', 'w') as fd:
     #     fd.truncate(0)
 
@@ -57,7 +58,7 @@ if __name__ == '__main__':
     lock = manager.Lock()
     authorset = manager.list()
     with ProcessPoolExecutor() as executor:
-        for chunk in grouper(books, 1):
+        for chunk in grouper(books, 100):
             executor.submit(tasks, chunk, authorset, lock)
 
     # sort and combine data
@@ -75,7 +76,6 @@ if __name__ == '__main__':
         else:
             data[name] = set(subjects)
 
-    
     with open('./output.csv', 'w', newline='') as fd:
         writer = csv.writer(fd, delimiter='\t')
         data = sorted(data.items(), key=lambda x: x[0])

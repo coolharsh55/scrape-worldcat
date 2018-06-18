@@ -63,10 +63,20 @@ async def get_authors(bookurl):
 
 async def extract_author_subjects(authorlink):
     page = await fetch(_BASE_URL + authorlink, params=None)
+    if not page:
+        return
     soup = BeautifulSoup(page, 'html.parser')
-    name = soup.find("h1").get_text()
-    
+    if not soup:
+        return
+    name = soup.find("h1")
+    if not name:
+        return
+    name = name.get_text()
+
     tagcloud = soup.find("div", {"id": "identitiesFASTCloud"})
+    if not tagcloud:
+        print('no tagcloud')
+        return
     tags = tagcloud.find_all("a")
     subjects = []
     for tag in tags:
@@ -76,6 +86,7 @@ async def extract_author_subjects(authorlink):
         subjects.append(text)
 
     logger.debug(f"author {name} has subjects {subjects}")
+    print(name, subjects)
     return name, subjects
 
 
